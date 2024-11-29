@@ -37,8 +37,10 @@ stages:
   - stage: Deploy
     displayName: Deploy stage
     jobs: 
-    - deployment: VMDeploy
-      displayName: web
+    - deployment: DeployWeb
+      displayName: deploy web app
+      pool:
+       vmImage: 'Ubuntu-latest'
       environment:
        name: DEV
        resourceName: dev-vm
