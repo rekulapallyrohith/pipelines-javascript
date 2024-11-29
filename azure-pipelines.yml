@@ -5,7 +5,7 @@ pool:
 variables:
   # Set your environment variables for the username, password, and public IP securely
   vmUsername: 'azureuser'  # Replace with your actual VM username
-  vmPassword: $(azurePassword)  # Use Azure Pipeline secrets to securely store the password
+  vmPassword: $(azureuser@123)  # Use Azure Pipeline secrets to securely store the password
   vmPublicIp: '20.68.0.124'  # Replace with the public IP of your VM
 
 stages:
@@ -49,26 +49,26 @@ stages:
 
           - script: |
               echo "Starting deployment on VM..."
-              sshpass -p $(vmPassword) scp -o StrictHostKeyChecking=no -r $(Build.SourcesDirectory) $(vmUsername)@$(vmPublicIp):/home/$(vmUsername)/app
+              sshpass -p $(azureuser@123) scp -o StrictHostKeyChecking=no -r $(Build.SourcesDirectory) $(azureuser)@$(20.68.0.124):/home/$(azureuser)/app
             displayName: 'Copy files to VM'
             env:
-              vmPassword: $(vmPassword)  # Pass password securely from pipeline secrets
-              vmUsername: $(vmUsername)  # Pass username
-              vmPublicIp: $(vmPublicIp)  # Public IP of the VM
+              vmPassword: $(azureuser@123)  # Pass password securely from pipeline secrets
+              vmUsername: $(azureuser)  # Pass username
+              vmPublicIp: $(20.68.0.124)  # Public IP of the VM
 
           - script: |
               echo "Running deployment commands on the remote VM..."
-              sshpass -p $(vmPassword) ssh -o StrictHostKeyChecking=no $(vmUsername)@$(vmPublicIp) <<EOF
-                cd /home/$(vmUsername)/app
+              sshpass -p $(azureuser@123) ssh -o StrictHostKeyChecking=no $(azureuser)@$(20.68.0.124) <<EOF
+                cd /home/$(azureuser)/app
                 npm install
                 npm run build
                 npm run start
               EOF
             displayName: 'Run deployment commands on VM'
             env:
-              vmPassword: $(vmPassword)  # Pass password securely from pipeline secrets
-              vmUsername: $(vmUsername)  # Pass username
-              vmPublicIp: $(vmPublicIp)  # Public IP of the VM
+              vmPassword: $(azureuser@123)  # Pass password securely from pipeline secrets
+              vmUsername: $(azureuser)  # Pass username
+              vmPublicIp: $(20.68.0.124)  # Public IP of the VM
 
 
         
