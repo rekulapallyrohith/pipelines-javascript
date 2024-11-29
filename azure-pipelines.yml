@@ -48,8 +48,14 @@ stages:
             displayName: 'Install Node.js'
 
           - script: |
+              echo "Installing sshpass..."
+              sudo apt-get update
+              sudo apt-get install -y sshpass
+            displayName: 'Install sshpass'
+
+          - script: |
               echo "Starting deployment on VM..."
-              sshpass -p $(vmPassword) scp -o StrictHostKeyChecking=no -r $(Build.SourcesDirectory) $(vmUsername)@$(vmPublicIp):/home/$(vmUsername)/app
+              sshpass -p "$(vmPassword)" scp -o StrictHostKeyChecking=no -r "$(Build.SourcesDirectory)" "$(vmUsername)"@"$(vmPublicIp)":/home/"$(vmUsername)"/app
             displayName: 'Copy files to VM'
             env:
               vmPassword: $(vmPassword)  # Pass password securely from pipeline secrets
@@ -58,7 +64,7 @@ stages:
 
           - script: |
               echo "Running deployment commands on the remote VM..."
-              sshpass -p $(vmPassword) ssh -o StrictHostKeyChecking=no $(vmUsername)@$(vmPublicIp) <<EOF
+              sshpass -p "$(vmPassword)" ssh -o StrictHostKeyChecking=no "$(vmUsername)"@"$(vmPublicIp)" <<EOF
                 cd /home/$(vmUsername)/app
                 npm install
                 npm run build
@@ -69,6 +75,7 @@ stages:
               vmPassword: $(vmPassword)  # Pass password securely from pipeline secrets
               vmUsername: $(vmUsername)  # Pass username
               vmPublicIp: $(vmPublicIp)  # Public IP of the VM
+
 
 
 
