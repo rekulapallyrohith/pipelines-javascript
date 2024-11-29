@@ -48,12 +48,6 @@ stages:
             displayName: 'Install Node.js'
 
           - script: |
-              echo "Installing sshpass..."
-              sudo apt-get update
-              sudo apt-get install -y sshpass
-            displayName: 'Install sshpass'
-
-          - script: |
               echo "Starting deployment on VM..."
               sshpass -p $(vmPassword) scp -o StrictHostKeyChecking=no -r $(Build.SourcesDirectory) $(vmUsername)@$(vmPublicIp):/home/$(vmUsername)/app
             displayName: 'Copy files to VM'
