@@ -29,7 +29,7 @@ stages:
             rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'   # Replace with your folder
             includeRootFolder: false
             archiveType: 'zip'  # Ensure 'zip' is specified
-            filePatterns: '**/*.txt'  # Adjust file pattern as needed
+            filePatterns: '**/*.json'  # Adjust file pattern as needed
             destinationFolder: '$(Build.ArtifactStagingDirectory)/archive'
             replaceExistingArchive: true
         - upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
