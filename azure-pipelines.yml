@@ -5,7 +5,7 @@
 
 trigger: none
 pool:
-name: devopsagent-vm
+  name: devopsagent-vm
     
 stages:
   - stage: Build
@@ -33,4 +33,26 @@ stages:
             replaceExistingArchive: true
         - upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
           artifact: drop 
+  
+  - stage: Deploy
+    displayName: Deploy stage
+    jobs:
+    - deployment: VMDeploy
+      displayName: Web deploy
+      environment:
+       name: DEV
+       resourceType: VirtualMachine
+       tags: none
+      strategy:
+       runOnce:
+        deploy:
+         steps:
+         - task: Bash@3
+           inputs:
+            targetType: 'inline'
+            script: |
+                # Modify deployment script based on the app type
+                echo "Starting deployment script run"
+                sudo java -jar '$(Pipeline.Workspace)/drop/**/target/*.jar'
+                       
           
