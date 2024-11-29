@@ -45,7 +45,7 @@ stages:
         name: dev  # Name of your environment, used for approval and monitoring
         resourceName: dev-vm  # The name of the VM resource in Azure DevOps
         resourceType: VirtualMachine
-        tags: none
+        tags: dev
       strategy:
         rolling:
           maxParallel: 2  # Parallel deployments during a rolling update
