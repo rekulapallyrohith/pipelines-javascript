@@ -5,8 +5,8 @@
 
 trigger: none
 pool:
-  name: devopsagent-vm
-    
+  name: devopsagent-vm  # Custom agent pool for your VM
+
 stages:
   - stage: Build
     displayName: Build stage
@@ -16,65 +16,73 @@ stages:
         steps:
         - task: UseNode@1
           inputs:
-            version: '16.x'
+            version: '16.x'  # Install Node.js version 16.x
           displayName: 'Install Node.js'
         - script: |
             npm install
-            npm run build --if-present
-            npm run test --if-present
+            npm run build --if-present  # Optional: Only if you have a build script
+            npm run test --if-present    # Optional: Only if you have a test script
           displayName: 'npm install, build and test'
         - task: ArchiveFiles@2
           displayName: 'Archive files'
           inputs:
-            rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+            rootFolderOrFile: '$(System.DefaultWorkingDirectory)'  # Path to the working directory
             includeRootFolder: false
             archiveType: zip
-            archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+            archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip  # Store as .zip
             replaceExistingArchive: true
-        - upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-          artifact: drop 
-  
+        - upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip  # Upload artifact
+          artifact: drop  # Artifact name for later use
+
   - stage: Deploy
     displayName: Deploy stage
     jobs: 
     - deployment: DeployWeb
-      displayName: deploy web app
+      displayName: Deploy web app
       pool:
-       vmImage: 'Ubuntu-latest'
+        vmImage: 'ubuntu-latest'  # Agent pool with Ubuntu image for VM-based deployment
       environment:
-       name: DEV
-       resourceName: dev-vm
-       resourceType: VirtualMachine
-       tags: none
+        name: DEV  # Name of your environment, used for approval and monitoring
+        resourceName: dev-vm  # The name of the VM resource in Azure DevOps
+        resourceType: VirtualMachine
+        tags: none
       strategy:
-       rolling:
-        maxParallel: 2  #for percentages, mention as x%
-        preDeploy:
-          steps:
-          - download: current
-            artifact: drop
-          - script: echo initialize, cleanup, backup, install certs
-        deploy:
-          steps:
-          - task: Bash@3
-            inputs:
-              targetType: 'inline'
-              script: |
-                # Modify deployment script based on the app type
-                echo "Starting deployment script run"
-                sudo java -jar '$(Pipeline.Workspace)/drop/**/target/*.jar'
-        routeTraffic:
-          steps:
-          - script: echo routing traffic
-        postRouteTraffic:
-          steps:
-          - script: echo health check post-route traffic
-        on:
-          failure:
+        rolling:
+          maxParallel: 2  # Parallel deployments during a rolling update
+          preDeploy:
             steps:
-            - script: echo Restore from backup! This is on failure
-          success:
+            - download: current  # Download the artifact from the previous stage
+              artifact: drop
+            - script: echo "Initializing pre-deployment steps..."
+              displayName: 'Pre-deployment steps (backup, cleanup, etc.)'
+          deploy:
             steps:
-            - script: echo Notify! This is on success
+            - task: Bash@3
+              inputs:
+                targetType: 'inline'
+                script: |
+                  # Deployment script to copy and run Node.js app
+                  echo "Starting deployment on VM..."
+                  cd $(Pipeline.Workspace)/drop  # Navigate to the dropped artifact location
+                  
+                  # Copy application files to the target VM directory
+                  # Example command, adjust based on your requirements
+                  scp -i $(privateKey) -r ./azureuser@$VM_IP:/home/azureuser/myapp  # Replace with actual SSH command and private key
+
+                  # Install dependencies and start the application
+                  ssh -i $(privateKey) azureuser@$VM_IP << 'EOF'
+                    cd /home/azureuser/myapp  # Path on VM
+                    npm install  # Install Node.js dependencies
+                    npm start  # Start the Node.js application
+                  EOF
+              displayName: 'Deploy Node.js application'
+          routeTraffic:
+            steps:
+            - script: echo "Routing traffic to the deployed application..."  # Traffic routing
+          postRouteTraffic:
+            steps:
+            - script: echo "Health check post-route traffic"  # Health check after routing
+        
+
                        
           
