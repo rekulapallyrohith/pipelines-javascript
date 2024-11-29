@@ -3,9 +3,9 @@ pool:
   name: devopsagent-vm  # Custom agent pool for your VM
 
 variables:
-  # Set your environment variables for the username, password, and public IP securely
+  # Set your environment variables for the username, private key, and public IP securely
   vmUsername: 'azureuser'  # Replace with your actual VM username
-  vmPassword: $(azurePassword)  # Use Azure Pipeline secrets to securely store the password
+  vmPrivateKey: $(vmPrivateKey)  # Store private SSH key in Azure Pipeline secrets
   vmPublicIp: '20.68.0.124'  # Replace with the public IP of your VM
 
 stages:
@@ -48,40 +48,24 @@ stages:
             displayName: 'Install Node.js'
 
           - script: |
-              echo "Installing sshpass..."
-              sudo apt-get update || true  # Continue even if apt-get update fails (in case it's locked)
-              RETRY_COUNT=0
-              MAX_RETRIES=5
-              while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-                sudo apt-get install -y sshpass && break || true
-                echo "Attempt $((RETRY_COUNT+1)) failed, retrying..."
-                RETRY_COUNT=$((RETRY_COUNT+1))
-                sleep 10  # Wait 10 seconds before retrying
-              done
-            displayName: 'Install sshpass'
-
-          - script: |
               echo "Starting deployment on VM..."
-              sshpass -p "$(vmPassword)" scp -o StrictHostKeyChecking=no -r "$(Build.SourcesDirectory)" "$(vmUsername)"@"$(vmPublicIp)":/home/"$(vmUsername)"/app
-            displayName: 'Copy files to VM'
-            env:
-              vmPassword: $(vmPassword)  # Pass password securely from pipeline secrets
-              vmUsername: $(vmUsername)  # Pass username
-              vmPublicIp: $(vmPublicIp)  # Public IP of the VM
+              mkdir -p ~/.ssh  # Ensure the .ssh directory exists
+              echo "$(vmPrivateKey)" > ~/.ssh/id_rsa  # Write the private key to a file
+              chmod 600 ~/.ssh/id_rsa  # Ensure the key has the correct permissions
+              ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $(vmUsername)@$(vmPublicIp) "mkdir -p /home/$(vmUsername)/app"
+              scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -r "$(Build.SourcesDirectory)" $(vmUsername)@$(vmPublicIp):/home/$(vmUsername)/app
+            displayName: 'Copy files to VM via SCP'
 
           - script: |
               echo "Running deployment commands on the remote VM..."
-              sshpass -p "$(vmPassword)" ssh -o StrictHostKeyChecking=no "$(vmUsername)"@"$(vmPublicIp)" <<EOF
+              ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $(vmUsername)@$(vmPublicIp) <<EOF
                 cd /home/$(vmUsername)/app
                 npm install
                 npm run build
                 npm run start
               EOF
             displayName: 'Run deployment commands on VM'
-            env:
-              vmPassword: $(vmPassword)  # Pass password securely from pipeline secrets
-              vmUsername: $(vmUsername)  # Pass username
-              vmPublicIp: $(vmPublicIp)  # Public IP of the VM
+
 
 
 
