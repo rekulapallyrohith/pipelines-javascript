@@ -42,7 +42,7 @@ stages:
       pool:
         vmImage: 'ubuntu-latest'  # Agent pool with Ubuntu image for VM-based deployment
       environment:
-        name: DEV  # Name of your environment, used for approval and monitoring
+        name: dev  # Name of your environment, used for approval and monitoring
         resourceName: dev-vm  # The name of the VM resource in Azure DevOps
         resourceType: VirtualMachine
         tags: none
