@@ -1,11 +1,12 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger: none
 pool:
   name: devopsagent-vm  # Custom agent pool for your VM
+
+variables:
+  # Set your environment variables for the username, password, and public IP securely
+  vmUsername: 'azureuser'  # Replace with your actual VM username
+  vmPassword: $(azurePassword)  # Use Azure Pipeline secrets to securely store the password
+  vmPublicIp: '20.68.0.124'  # Replace with the public IP of your VM
 
 stages:
   - stage: Build
@@ -34,54 +35,42 @@ stages:
         - upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip  # Upload artifact
           artifact: drop  # Artifact name for later use
 
-  - stage: Deploy
-    displayName: Deploy stage
-    jobs: 
-    - deployment: DeployWeb
-      displayName: Deploy web app
-      pool:
-        vmImage: 'ubuntu-latest'  # Agent pool with Ubuntu image for VM-based deployment
-      environment:
-        name: dev  # Name of your environment, used for approval and monitoring
-        resourceName: dev-vm  # The name of the VM resource in Azure DevOps
-        resourceType: VirtualMachine
-        tags: dev
-      strategy:
-        rolling:
-          maxParallel: 2  # Parallel deployments during a rolling update
-          preDeploy:
-            steps:
-            - download: current  # Download the artifact from the previous stage
-              artifact: drop
-            - script: echo "Initializing pre-deployment steps..."
-              displayName: 'Pre-deployment steps (backup, cleanup, etc.)'
-          deploy:
-            steps:
-            - task: Bash@3
-              inputs:
-                targetType: 'inline'
-                script: |
-                  # Deployment script to copy and run Node.js app
-                  echo "Starting deployment on VM..."
-                  cd $(Pipeline.Workspace)/drop  # Navigate to the dropped artifact location
-                  
-                  # Copy application files to the target VM directory
-                  # Example command, adjust based on your requirements
-                  scp -i $(privateKey) -r ./azureuser@$VM_IP:/home/azureuser/myapp  # Replace with actual SSH command and private key
 
-                  # Install dependencies and start the application
-                  ssh -i $(privateKey) azureuser@$VM_IP << 'EOF'
-                    cd /home/azureuser/myapp  # Path on VM
-                    npm install  # Install Node.js dependencies
-                    npm start  # Start the Node.js application
-                  EOF
-              displayName: 'Deploy Node.js application'
-          routeTraffic:
-            steps:
-            - script: echo "Routing traffic to the deployed application..."  # Traffic routing
-          postRouteTraffic:
-            steps:
-            - script: echo "Health check post-route traffic"  # Health check after routing
+  - stage: Deploy
+    displayName: 'Deploy Node.js Application'
+    jobs:
+      - job: Deploy
+        displayName: 'Deploy'
+        steps:
+          - task: UseNode@1
+            inputs:
+              version: '16.x'
+            displayName: 'Install Node.js'
+
+          - script: |
+              echo "Starting deployment on VM..."
+              sshpass -p $(vmPassword) scp -o StrictHostKeyChecking=no -r $(Build.SourcesDirectory) $(vmUsername)@$(vmPublicIp):/home/$(vmUsername)/app
+            displayName: 'Copy files to VM'
+            env:
+              vmPassword: $(vmPassword)  # Pass password securely from pipeline secrets
+              vmUsername: $(vmUsername)  # Pass username
+              vmPublicIp: $(vmPublicIp)  # Public IP of the VM
+
+          - script: |
+              echo "Running deployment commands on the remote VM..."
+              sshpass -p $(vmPassword) ssh -o StrictHostKeyChecking=no $(vmUsername)@$(vmPublicIp) <<EOF
+                cd /home/$(vmUsername)/app
+                npm install
+                npm run build
+                npm run start
+              EOF
+            displayName: 'Run deployment commands on VM'
+            env:
+              vmPassword: $(vmPassword)  # Pass password securely from pipeline secrets
+              vmUsername: $(vmUsername)  # Pass username
+              vmPublicIp: $(vmPublicIp)  # Public IP of the VM
+
+
         
 
                        
